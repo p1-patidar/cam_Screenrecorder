@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen & Camera Recorder</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <main class="container">
+        <header>
+            <h1>🎥 Screen & Camera Recorder</h1>
+            <p class="subtitle">Record your screen and camera with smart view switching</p>
+        </header>
+
+        <!-- Settings Section -->
+        <div class="settings-section">
+            <div class="setting-group">
+                <label for="inactivityTimeout">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    Inactivity Timeout (seconds)
+                </label>
+                <input type="number" id="inactivityTimeout" min="1" max="30" value="3" />
+                <span class="setting-help">Switches from camera-only view to screen+camera after this timeout when
+                    idle</span>
+            </div>
+
+            <div class="setting-group">
+                <label>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 16v-4"></path>
+                        <path d="M12 8h.01"></path>
+                    </svg>
+                    Overlay Shape
+                </label>
+                <div class="shape-selector">
+                    <label class="shape-option">
+                        <input type="radio" name="overlayShape" value="circle" checked />
+                        <span class="shape-label">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="12" cy="12" r="9"></circle>
+                            </svg>
+                            Circle
+                        </span>
+                    </label>
+                    <label class="shape-option">
+                        <input type="radio" name="overlayShape" value="square" />
+                        <span class="shape-label">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                            </svg>
+                            Square
+                        </span>
+                    </label>
+                </div>
+                <span class="setting-help">Choose the shape of the camera overlay in screen+camera mode</span>
+            </div>
+        </div>
+
+        <!-- Quality Settings Section -->
+        <div class="settings-section">
+            <h3>Quality Settings</h3>
+            <div class="setting-group">
+                <label for="resolutionSelect">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                        <line x1="8" y1="21" x2="16" y2="21"></line>
+                        <line x1="12" y1="17" x2="12" y2="21"></line>
+                    </svg>
+                    Resolution
+                </label>
+                <select id="resolutionSelect">
+                    <option value="native">Screen Native (Default)</option>
+                    <option value="1080">1080p (1920x1080)</option>
+                    <option value="720">720p (1280x720)</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <label for="videoBitrateSelect">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                    </svg>
+                    Video Quality (Bitrate)
+                </label>
+                <select id="videoBitrateSelect">
+                    <option value="50000000">Extreme (50 Mbps)</option>
+                    <option value="25000000">Ultra (25 Mbps - 4K)</option>
+                    <option value="16000000">Very High (16 Mbps - 1440p)</option>
+                    <option value="12000000">High (12 Mbps - 1080p60)</option>
+                    <option value="8000000">Standard (8 Mbps - 1080p)</option>
+                    <option value="5000000">Medium (5 Mbps)</option>
+                    <option value="2500000">Low (2.5 Mbps)</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <label for="audioBitrateSelect">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                        <line x1="12" y1="19" x2="12" y2="23"></line>
+                        <line x1="8" y1="23" x2="16" y2="23"></line>
+                    </svg>
+                    Audio Quality (Bitrate)
+                </label>
+                <select id="audioBitrateSelect">
+                    <option value="512000">Studio (512 kbps)</option>
+                    <option value="320000">High Quality (320 kbps)</option>
+                    <option value="256000">Standard (256 kbps)</option>
+                    <option value="128000">Medium (128 kbps)</option>
+                    <option value="64000">Low (64 kbps)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="controls-panel">
+            <div class="device-selection">
+                <div class="input-group">
+                    <label for="cameraSelect">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path
+                                d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                            <circle cx="12" cy="13" r="4" />
+                        </svg>
+                        Camera
+                    </label>
+                    <select id="cameraSelect">
+                        <option value="">Select Camera...</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="micSelect">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                            <line x1="12" y1="19" x2="12" y2="23" />
+                            <line x1="8" y1="23" x2="16" y2="23" />
+                        </svg>
+                        Microphone
+                    </label>
+                    <select id="micSelect">
+                        <option value="">Select Microphone...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="recording-controls">
+                <button id="startBtn" class="btn btn-start">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="12" cy="12" r="10" />
+                    </svg>
+                    Start Recording
+                </button>
+                <button id="stopBtn" class="btn btn-stop" disabled>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="6" y="6" width="12" height="12" />
+                    </svg>
+                    Stop Recording
+                </button>
+                <button id="downloadBtn" class="btn btn-download" disabled>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    Download Video
+                </button>
+                <button id="toolkitBtn" class="btn btn-toolkit">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                        <path d="M2 2l7.586 7.586"></path>
+                    </svg>
+                    Toolkit
+                </button>
+            </div>
+
+            <div class="status-display">
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span id="statusText">Ready to record</span>
+                </div>
+                <div class="timer" id="timer">00:00</div>
+            </div>
+        </div>
+
+        <div class="preview-container">
+            <canvas id="previewCanvas"></canvas>
+            <div class="preview-hint">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+                <p>Live preview will appear here when recording starts</p>
+                <p class="hint-small">Camera overlay is draggable • Circle view activates on keyboard/mouse input</p>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <h3>📋 How it works</h3>
+            <ul>
+                <li><strong>Smart View:</strong> Camera shows in full view when idle</li>
+                <li><strong>Circle Mode:</strong> Switches to circle when you type or move mouse</li>
+                <li><strong>Auto-Switch:</strong> Returns to full view after 3 seconds of no input</li>
+                <li><strong>Draggable:</strong> Click and drag the camera overlay to reposition</li>
+                <li><strong>HD Quality:</strong> Records at 1080p with high-quality audio</li>
+            </ul>
+        </div>
+        </div>
+
+        <script src="recorder.js"></script>
+</body>
+
+</html>

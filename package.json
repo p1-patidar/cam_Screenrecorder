@@ -1,0 +1,59 @@
+{
+  "name": "screen-camera-recorder",
+  "version": "1.0.0",
+  "description": "A professional screen and camera recorder with intelligent camera view switching",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac",
+    "build:all": "electron-builder -mwl"
+  },
+  "keywords": [
+    "screen recorder",
+    "camera",
+    "electron",
+    "desktop"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.screenrecorder.app",
+    "productName": "Screen & Camera Recorder",
+    "mac": {
+      "category": "public.app-category.video",
+      "icon": "assets/icon.png",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "extendInfo": {
+        "NSCameraUsageDescription": "This app needs access to your camera to record video overlay while screen recording.",
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone to record audio during screen recording.",
+        "NSScreenCaptureUsageDescription": "This app needs to capture your screen content for recording."
+      }
+    },
+    "dmg": {
+      "title": "Screen & Camera Recorder",
+      "icon": "assets/icon.png"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "style.css",
+      "recorder.js",
+      "overlay.html",
+      "overlay.js",
+      "Info.plist",
+      "assets/**/*"
+    ]
+  }
+}

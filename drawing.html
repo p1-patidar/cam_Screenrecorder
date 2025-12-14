@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drawing Layer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: transparent;
+        }
+
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        /* When in cursor mode, we want events to pass through */
+        body.pointer-events-none {
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="drawingCanvas"></canvas>
+    <script src="drawing.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Camera Overlay</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: transparent;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            -webkit-app-region: drag;
+            /* Allow dragging the window */
+        }
+
+        #camera-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            /* Default shape handled by class */
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.8);
+            background: #000;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            /* Center crop */
+            transform: scaleX(-1);
+            /* Mirror effect */
+        }
+
+        /* Resize handle */
+        #resize-handle {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            width: 30px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.8);
+            /* More visible */
+            border-radius: 50%;
+            cursor: nwse-resize;
+            -webkit-app-region: no-drag;
+            /* Allow clicking/dragging the handle */
+            z-index: 1000;
+            /* High z-index */
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        body:hover #resize-handle {
+            opacity: 1;
+        }
+
+        /* Shape classes */
+        .shape-circle {
+            border-radius: 50%;
+        }
+
+        .shape-square {
+            border-radius: 12px;
+        }
+
+        /* Dynamic handle position based on shape */
+        .shape-circle+#resize-handle {
+            bottom: 15%;
+            right: 15%;
+        }
+
+        .shape-square+#resize-handle {
+            bottom: 5px;
+            right: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="camera-container" class="shape-circle">
+        <video id="camera-feed" autoplay muted playsinline></video>
+    </div>
+    <div id="resize-handle"></div>
+    <script src="overlay.js"></script>
+</body>
+
+</html>
