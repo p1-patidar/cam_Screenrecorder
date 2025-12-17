@@ -173,6 +173,54 @@
 
 <body>
     <div id="expanded-view">
+        <!-- Group 0: Recording Controls -->
+        <div class="tools-row">
+            <button class="tool-btn" id="startToolBtn" title="Start Recording" style="color: #22c55e;">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="12" cy="12" r="10"></circle>
+                </svg>
+            </button>
+            <button class="tool-btn" id="stopToolBtn" title="Stop Recording" style="color: #ef4444; display: none;">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="6" width="12" height="12"></rect>
+                </svg>
+            </button>
+            <button class="tool-btn" id="downloadToolBtn" title="Download" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+            </button>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Group 0.5: Settings -->
+        <div class="tools-row">
+            <div title="Inactivity Timeout (s)" style="display: flex; align-items: center; gap: 4px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    style="width: 16px; height: 16px; opacity: 0.7;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <input type="number" id="timeoutInput" value="3" min="1" max="60"
+                    style="width: 36px; background: transparent; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: white; text-align: center; font-size: 12px; -webkit-app-region: no-drag;">
+            </div>
+
+            <button class="tool-btn" id="shapeToggleBtn" title="Toggle Overlay Shape (Circle/Square)">
+                <svg id="shapeIconCircle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="9"></circle>
+                </svg>
+                <svg id="shapeIconSquare" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    style="display: none;">
+                    <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                </svg>
+            </button>
+        </div>
+
+        <div class="divider"></div>
+
         <!-- Group 1: Interaction -->
         <div class="tools-row">
             <button class="tool-btn active" id="cursorBtn" title="Cursor (Interact with apps)">
@@ -193,12 +241,6 @@
                     <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
                     <path d="M2 2l7.586 7.586"></path>
                     <circle cx="11" cy="11" r="2"></circle>
-                </svg>
-            </button>
-            <button class="tool-btn" id="eraserBtn" title="Eraser">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 20H7L3 16C2 15 2 13 3 12L13 2L22 11L20 20Z"></path>
-                    <line x1="17" y1="17" x2="11" y2="11"></line>
                 </svg>
             </button>
         </div>
@@ -241,6 +283,20 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                     <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </button>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Group 5.5: Focus -->
+        <div class="tools-row">
+            <button class="tool-btn" id="focusToolBtn" title="Focus Mode (Full Screen Camera)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 3h6v6"></path>
+                    <path d="M9 21H3v-6"></path>
+                    <path d="M21 3l-7 7"></path>
+                    <path d="M3 21l7-7"></path>
                 </svg>
             </button>
         </div>

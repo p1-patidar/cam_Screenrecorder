@@ -15,8 +15,12 @@
             align-items: center;
             height: 100vh;
             width: 100vw;
+            /* Draggable only when class is present */
+            -webkit-app-region: no-drag;
+        }
+
+        body.draggable {
             -webkit-app-region: drag;
-            /* Allow dragging the window */
         }
 
         #camera-container {
@@ -89,6 +93,31 @@
     </div>
     <div id="resize-handle"></div>
     <script src="overlay.js"></script>
+    <script>
+        // Forward user input activity to main process
+        const { ipcRenderer } = require('electron');
+
+        let lastInputTime = 0;
+        const THROTTLE_MS = 200; // Send at most every 200ms
+
+        function sendInputActivity() {
+            const now = Date.now();
+            if (now - lastInputTime > THROTTLE_MS) {
+                lastInputTime = now;
+                // console.log('[Overlay] Detecting input, sending signal');
+                ipcRenderer.send('overlay-user-input');
+            }
+        }
+
+        window.addEventListener('mousemove', sendInputActivity);
+        window.addEventListener('mousedown', () => {
+            // Clicks should always send immediately
+            ipcRenderer.send('overlay-user-input');
+        });
+        window.addEventListener('keydown', () => {
+            ipcRenderer.send('overlay-user-input');
+        });
+    </script>
 </body>
 
 </html>

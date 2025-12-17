@@ -25,6 +25,18 @@ ipcRenderer.on('update-shape', (event, shape) => {
     }
 });
 
+// Listen for mode updates
+ipcRenderer.on('set-mode', (event, mode) => {
+    console.log('Setting mode:', mode);
+    if (mode === 'mini') {
+        document.body.classList.add('draggable');
+    } else {
+        document.body.classList.remove('draggable');
+    }
+});
+// Default to draggable (mini mode start) handled by main process init
+// document.body.classList.add('draggable');
+
 // Start camera stream
 async function startCamera(deviceId) {
     try {

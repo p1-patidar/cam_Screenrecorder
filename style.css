@@ -193,6 +193,21 @@ header h1 {
     opacity: 0.7;
 }
 
+.input-group:has(#cameraSelect) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+}
+
+.input-group:has(#cameraSelect) label {
+    width: 100%;
+}
+
+.input-group:has(#cameraSelect) select {
+    flex: 1;
+}
+
 select {
     width: 100%;
     padding: 0.875rem 1rem;
@@ -245,6 +260,36 @@ select:focus {
 .btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+}
+
+#focusBtn {
+    flex: 0 0 auto;
+    min-width: 48px;
+    width: 48px;
+    height: 48px;
+    padding: 0.5rem;
+    margin: 0;
+    font-size: 0;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--accent-primary), #7c3aed);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+}
+
+#focusBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+#focusBtn svg {
+    width: 24px;
+    height: 24px;
 }
 
 .btn-start {

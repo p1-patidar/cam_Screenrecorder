@@ -4,7 +4,7 @@ const canvas = document.getElementById('drawingCanvas');
 const ctx = canvas.getContext('2d');
 
 let isDrawing = false;
-let currentTool = 'cursor'; // Default to cursor so mouse passes through
+let currentTool = 'pen'; // Default to pen
 let currentColor = '#ef4444';
 let lineWidth = 4;
 
@@ -16,8 +16,9 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// Initialize with mouse passthrough (cursor mode by default)
-ipcRenderer.send('set-drawing-ignore-mouse', true);
+// Initialize with mouse capture enabled (pen mode by default)
+document.body.classList.remove('pointer-events-none');
+ipcRenderer.send('set-drawing-ignore-mouse', false);
 
 // ESC key as escape hatch - always switch to cursor mode
 document.addEventListener('keydown', (e) => {

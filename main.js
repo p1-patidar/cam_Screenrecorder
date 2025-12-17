@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { exec } = require('child_process');
+const nativeRecorder = require('./native-recorder/NativeRecorder');
 
 let mainWindow;
 
@@ -139,20 +140,37 @@ app.whenReady().then(() => {
         }
     });
 
-    ipcMain.handle('convert-to-mp4', async (event, webmPath, mp4Filename, mimeType) => {
+    ipcMain.handle('convert-to-mp4', async (event, sourcePath, mp4Filename, mimeType) => {
         return new Promise((resolve, reject) => {
             const downloadsPath = app.getPath('downloads');
-            const mp4Path = path.join(downloadsPath, mp4Filename);
-            console.log('[Main] Converting', webmPath, 'to', mp4Path, 'Source mime:', mimeType);
+            const targetPath = path.join(downloadsPath, mp4Filename);
+            console.log('[Main] Processing video:', sourcePath, 'Target:', targetPath, 'Mime:', mimeType);
+
+            // Optimization for Native Recording (already MP4)
+            // If the source is already an MP4, just copy it
+            if (sourcePath.toLowerCase().endsWith('.mp4')) {
+                console.log('[Main] Source is already MP4. Using direct file copy.');
+                fs.copyFile(sourcePath, targetPath, (err) => {
+                    if (err) {
+                        console.error('[Main] Copy failed:', err);
+                        reject(err);
+                    } else {
+                        finishConversion(sourcePath, targetPath);
+                    }
+                });
+                return;
+            }
 
             let ffmpegCmd;
+            const ffmpegPath = '/opt/homebrew/bin/ffmpeg'; // Hardcoded for now, ideal to search or bundle
 
+            // Fallback for WebM (Legacy Web Recorder)
             if (mimeType && mimeType.includes('h264')) {
-                console.log('[Main] Source is H.264, using fast remux (copy)');
-                ffmpegCmd = `/opt/homebrew/bin/ffmpeg -i "${webmPath}" -c copy "${mp4Path}" -y`;
+                console.log('[Main] Source is H.264 WebM, using fast remux');
+                ffmpegCmd = `"${ffmpegPath}" -i "${sourcePath}" -c copy "${targetPath}" -y`;
             } else {
-                console.log('[Main] Source is not H.264, using hardware acceleration');
-                ffmpegCmd = `/opt/homebrew/bin/ffmpeg -i "${webmPath}" -c:v h264_videotoolbox -b:v 6000k -c:a aac -b:a 192k "${mp4Path}" -y`;
+                console.log('[Main] Source is WebM, using hardware acceleration conversion');
+                ffmpegCmd = `"${ffmpegPath}" -i "${sourcePath}" -c:v h264_videotoolbox -b:v 6000k -c:a aac -b:a 192k "${targetPath}" -y`;
             }
 
             exec(ffmpegCmd, (error, stdout, stderr) => {
@@ -160,14 +178,15 @@ app.whenReady().then(() => {
                     console.error('[Main] FFmpeg error:', error);
                     console.error('[Main] FFmpeg stderr:', stderr);
 
+                    // Retry with software encoding if hardware failed
                     if (ffmpegCmd.includes('h264_videotoolbox')) {
                         console.log('[Main] Hardware encoding failed, falling back to software libx264');
-                        const fallbackCmd = `/opt/homebrew/bin/ffmpeg -i "${webmPath}" -c:v libx264 -preset fast -crf 22 -c:a aac -b:a 192k "${mp4Path}" -y`;
+                        const fallbackCmd = `"${ffmpegPath}" -i "${sourcePath}" -c:v libx264 -preset fast -crf 22 -c:a aac -b:a 192k "${targetPath}" -y`;
                         exec(fallbackCmd, (err2, out2, stderr2) => {
                             if (err2) {
                                 reject(err2);
                             } else {
-                                finishConversion();
+                                finishConversion(sourcePath, targetPath);
                             }
                         });
                     } else {
@@ -175,20 +194,63 @@ app.whenReady().then(() => {
                     }
                     return;
                 }
-                finishConversion();
+                finishConversion(sourcePath, targetPath);
             });
 
-            function finishConversion() {
-                console.log('[Main] Conversion complete');
+            function finishConversion(src, dst) {
+                console.log('[Main] Processing complete');
                 try {
-                    fs.unlinkSync(webmPath);
-                    console.log('[Main] Deleted temporary WebM file');
+                    // Only delete if it's a temp file, which it usually is
+                    if (src.includes(os.tmpdir())) {
+                        fs.unlinkSync(src);
+                        console.log('[Main] Deleted temporary file:', src);
+                    }
                 } catch (e) {
-                    console.warn('[Main] Could not delete WebM file:', e);
+                    console.warn('[Main] Could not delete temp file:', e);
                 }
-                resolve(mp4Path);
+                resolve(dst);
             }
         });
+    });
+
+    // --- Native Recording Handlers ---
+
+    ipcMain.handle('start-native-recording', async (event, micLabel) => {
+        try {
+            const tempDir = os.tmpdir();
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+            const filename = `native_recording_${timestamp}.mp4`; // Record directly to MP4
+            const outputPath = path.join(tempDir, filename);
+
+            // Get video device index (default screen)
+            const videoIndex = await nativeRecorder.getScreenDeviceIndex();
+
+            // Get audio device index details
+            let audioIndex = null;
+            if (micLabel) {
+                audioIndex = await nativeRecorder.findDeviceIndex(micLabel, 'audio');
+                console.log(`[Main] Mapped mic "${micLabel}" to native index: ${audioIndex}`);
+            }
+
+            if (!videoIndex) {
+                throw new Error('Could not find screen device index');
+            }
+
+            await nativeRecorder.start(videoIndex, audioIndex, outputPath);
+            return outputPath;
+        } catch (error) {
+            console.error('[Main] Error starting native recording:', error);
+            throw error;
+        }
+    });
+
+    ipcMain.handle('stop-native-recording', async (event) => {
+        try {
+            return await nativeRecorder.stop();
+        } catch (error) {
+            console.error('[Main] Error stopping native recording:', error);
+            throw error;
+        }
     });
 
     ipcMain.handle('start-input-monitoring', async (event) => {
@@ -352,6 +414,8 @@ ipcMain.on('open-overlay', (event, { deviceId, shape }) => {
         // Use passed shape or saved state
         const initialShape = shape || overlayState.shape;
         overlayWindow.webContents.send('update-shape', initialShape);
+        // Initialize mode (default mini)
+        overlayWindow.webContents.send('set-mode', 'mini');
     });
 
     // If already ready
@@ -359,6 +423,8 @@ ipcMain.on('open-overlay', (event, { deviceId, shape }) => {
         overlayWindow.webContents.send('init-overlay', deviceId);
         const currentShape = shape || overlayState.shape;
         overlayWindow.webContents.send('update-shape', currentShape);
+        // Ensure mode is synced
+        overlayWindow.webContents.send('set-mode', overlayState.mode);
     } else {
         overlayWindow.show();
     }
@@ -368,6 +434,13 @@ ipcMain.on('close-overlay', () => {
     if (overlayWindow) {
         overlayWindow.hide();
         // Don't destroy, just hide to keep state
+    }
+});
+
+ipcMain.on('overlay-user-input', () => {
+    // Forward to recorder window as global input activity
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('global-input-activity');
     }
 });
 
@@ -421,6 +494,8 @@ ipcMain.on('set-overlay-mode', (event, mode) => {
 
         // Force square shape for full screen
         overlayWindow.webContents.send('update-shape', 'square');
+        // Tell overlay it is in full mode (to disable dragging)
+        overlayWindow.webContents.send('set-mode', 'full');
 
         // Hide toolkit if visible
         if (toolbarWindow && toolbarWindow.isVisible()) {
@@ -436,14 +511,20 @@ ipcMain.on('set-overlay-mode', (event, mode) => {
 
         if (overlayState.mode === 'full') {
             overlayWindow.setBounds(overlayState.lastBounds);
+        }
 
-            // Restore focus to the previous app (not our app window)
-            if (previousFrontApp && previousFrontApp !== 'Electron' && previousFrontApp !== 'Screen & Camera Recorder') {
-                console.log('[Main] Restoring focus to:', previousFrontApp);
-                exec(`osascript -e 'tell application "${previousFrontApp}" to activate'`, (err) => {
-                    if (err) console.warn('[Main] Failed to restore focus:', err);
-                });
-            }
+        // Tell overlay it is in mini mode (to enable dragging)
+        overlayWindow.webContents.send('set-mode', 'mini');
+
+        // Restore shape (circle or square from state)
+        overlayWindow.webContents.send('update-shape', overlayState.shape);
+
+        // Restore focus to the previous app (not our app window)
+        if (previousFrontApp && previousFrontApp !== 'Electron' && previousFrontApp !== 'Screen & Camera Recorder') {
+            console.log('[Main] Restoring focus to:', previousFrontApp);
+            exec(`osascript -e 'tell application "${previousFrontApp}" to activate'`, (err) => {
+                if (err) console.warn('[Main] Failed to restore focus:', err);
+            });
         }
 
         // Restore toolkit if it was visible
@@ -566,6 +647,9 @@ ipcMain.on('toggle-toolkit', () => {
 
         // Bring toolbar to front just in case
         toolbarWindow.moveTop();
+
+        // Reset toolbar to expanded state
+        toolbarWindow.webContents.send('reset-toolbar');
     }
 });
 
@@ -603,6 +687,22 @@ ipcMain.on('toolkit-action', (event, action) => {
             if (toolbarWindow) toolbarWindow.hide();
             if (drawingWindow) drawingWindow.hide();
         }
+    }
+});
+
+// --- IPC for Toolbar <-> Recorder Communication ---
+
+ipcMain.on('control-action', (event, action) => {
+    // Forward control actions from Toolbar to Main Window (Recorder)
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('control-action', action);
+    }
+});
+
+ipcMain.on('recording-state-update', (event, state) => {
+    // Forward state updates from Recorder to Toolbar
+    if (toolbarWindow && !toolbarWindow.isDestroyed()) {
+        toolbarWindow.webContents.send('recording-state-update', state);
     }
 });
 

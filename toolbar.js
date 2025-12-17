@@ -5,8 +5,8 @@ const buttons = {
     pen: document.getElementById('penBtn'),
     rect: document.getElementById('rectBtn'),
     circle: document.getElementById('circleBtn'),
+    circle: document.getElementById('circleBtn'),
     arrow: document.getElementById('arrowBtn'),
-    eraser: document.getElementById('eraserBtn'),
     clear: document.getElementById('clearBtn')
 };
 
@@ -37,7 +37,6 @@ buttons.pen.addEventListener('click', () => setActiveTool('pen'));
 buttons.rect.addEventListener('click', () => setActiveTool('rect'));
 buttons.circle.addEventListener('click', () => setActiveTool('circle'));
 buttons.arrow.addEventListener('click', () => setActiveTool('arrow'));
-buttons.eraser.addEventListener('click', () => setActiveTool('eraser'));
 
 // Board Controls
 const boardButtons = {
@@ -145,3 +144,108 @@ ipcRenderer.on('force-cursor-mode', () => {
     if (buttons.cursor) buttons.cursor.classList.add('active');
     console.log('[Toolbar] Forced cursor mode via ESC');
 });
+
+// Reset logic for when toolbar is re-opened
+ipcRenderer.on('reset-toolbar', () => {
+    // Force expanded view
+    if (minimizedView.style.display !== 'none') {
+        minimizedView.style.display = 'none';
+        expandedView.style.display = 'flex';
+        // Resize window back to normal
+        ipcRenderer.send('toolkit-action', {
+            type: 'resize-toolbar',
+            width: 1000,
+            height: 60
+        });
+    }
+});
+
+// --- Recording Controls ---
+const startBtn = document.getElementById('startToolBtn');
+const stopBtn = document.getElementById('stopToolBtn');
+const downloadBtn = document.getElementById('downloadToolBtn');
+const timeoutInput = document.getElementById('timeoutInput');
+const shapeToggleBtn = document.getElementById('shapeToggleBtn');
+const shapeIconCircle = document.getElementById('shapeIconCircle');
+const shapeIconSquare = document.getElementById('shapeIconSquare');
+const focusBtn = document.getElementById('focusToolBtn');
+
+if (startBtn) {
+    startBtn.addEventListener('click', () => {
+        ipcRenderer.send('control-action', { type: 'start' });
+    });
+}
+
+if (stopBtn) {
+    stopBtn.addEventListener('click', () => {
+        ipcRenderer.send('control-action', { type: 'stop' });
+    });
+}
+
+if (downloadBtn) {
+    downloadBtn.addEventListener('click', () => {
+        ipcRenderer.send('control-action', { type: 'download' });
+    });
+}
+
+if (focusBtn) {
+    focusBtn.addEventListener('click', () => {
+        ipcRenderer.send('control-action', { type: 'maximize-camera' });
+    });
+}
+
+timeoutInput.addEventListener('change', (e) => {
+    let value = parseInt(e.target.value);
+    if (value < 1) value = 1;
+    if (value > 60) value = 60;
+    e.target.value = value;
+    ipcRenderer.send('control-action', { type: 'set-timeout', value: value });
+});
+
+// Shape Toggle Logic
+let currentShape = 'circle';
+shapeToggleBtn.addEventListener('click', () => {
+    currentShape = currentShape === 'circle' ? 'square' : 'circle';
+    updateShapeUI();
+    ipcRenderer.send('control-action', { type: 'set-shape', shape: currentShape });
+});
+
+function updateShapeUI() {
+    if (currentShape === 'circle') {
+        shapeIconCircle.style.display = 'block';
+        shapeIconSquare.style.display = 'none';
+        shapeToggleBtn.title = "Overlay: Circle";
+    } else {
+        shapeIconCircle.style.display = 'none';
+        shapeIconSquare.style.display = 'block';
+        shapeToggleBtn.title = "Overlay: Square";
+    }
+}
+
+// --- State Updates from Main/Recorder ---
+ipcRenderer.on('recording-state-update', (event, state) => {
+    console.log('[Toolbar] Received state update:', state);
+    if (state.hasOwnProperty('isRecording')) {
+        if (state.isRecording) {
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'flex'; // Use flex to center icon
+            downloadBtn.disabled = true;
+        } else {
+            startBtn.style.display = 'flex';
+            stopBtn.style.display = 'none';
+            downloadBtn.disabled = !state.canDownload;
+        }
+    }
+
+    // Sync settings if provided (e.g. on startup)
+    if (state.overlayShape) {
+        currentShape = state.overlayShape;
+        updateShapeUI();
+    }
+    if (state.inactivityTimeout) {
+        timeoutInput.value = state.inactivityTimeout;
+    }
+});
+
+// Initialize with Pen tool selected by default
+setActiveTool('pen');

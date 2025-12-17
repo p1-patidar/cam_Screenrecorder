@@ -66,6 +66,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     statusText = document.getElementById('statusText');
     timer = document.getElementById('timer');
 
+    // Open toolkit by default
+    window.electronAPI.toggleToolkit();
+
     inactivityTimeoutInput = document.getElementById('inactivityTimeout');
     resolutionSelect = document.getElementById('resolutionSelect');
     videoBitrateSelect = document.getElementById('videoBitrateSelect');
@@ -117,6 +120,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Enumerate devices
     await enumerateDevices();
 
+    // Start global input monitoring (for Smart View features even when not recording)
+    try {
+        await window.electronAPI.startInputMonitoring();
+        console.log('[Renderer] Started global input monitoring on startup');
+    } catch (e) {
+        console.error('[Renderer] Failed to start input monitoring:', e);
+    }
+
+    // Attempt to initialize streams if a camera is already selected
+    if (cameraSelect.value) {
+        initializeStreams();
+    }
+
     // Event listeners
     startBtn.addEventListener('click', startRecording);
     stopBtn.addEventListener('click', stopRecording);
@@ -131,7 +147,66 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.electronAPI.onGlobalInputActivity(() => {
         onUserInput();
     });
+
+    // Also listen for local input activity (redundancy)
+    window.addEventListener('mousemove', onUserInput);
+    window.addEventListener('mousedown', onUserInput);
+    window.addEventListener('keydown', onUserInput);
+
+    // Listen for Toolbar Control Actions
+    window.electronAPI.onControlAction((action) => {
+        console.log('[Recorder] Received control action:', action);
+        if (action.type === 'start') {
+            startRecording();
+        } else if (action.type === 'stop') {
+            stopRecording();
+        } else if (action.type === 'download') {
+            downloadVideo();
+        } else if (action.type === 'set-timeout') {
+            inactivityTimeoutInput.value = action.value;
+            saveInactivitySettings(); // This updates state and triggers logic
+            resetInactivityTimer();
+        } else if (action.type === 'set-shape') {
+            state.overlayShape = action.shape;
+            saveOverlaySettings();
+            window.electronAPI.updateOverlayShape(state.overlayShape);
+            // Need to update the legacy UI radio buttons too so they stay in sync
+            overlayShapeRadios.forEach(radio => {
+                if (radio.value === action.shape) radio.checked = true;
+            });
+        } else if (action.type === 'maximize-camera') {
+            // Manual trigger for camera-only mode
+            console.log('[Recorder] Manual focus mode triggered');
+            state.cameraMode = 'camera-only';
+            state.focusModeActivatedAt = Date.now(); // Debounce: ignore input for 500ms
+            window.electronAPI.setOverlayMode('full');
+        }
+    });
+
+    // Main Window Focus Button logic
+    const mainFocusBtn = document.getElementById('focusBtn');
+    if (mainFocusBtn) {
+        mainFocusBtn.addEventListener('click', () => {
+            console.log('[Recorder] Manual focus mode triggered (Main Window)');
+            state.cameraMode = 'camera-only';
+            state.focusModeActivatedAt = Date.now(); // Debounce: ignore input for 500ms
+            window.electronAPI.setOverlayMode('full');
+        });
+    }
+
+    // Broadcast initial state to toolbar (in case it's already open)
+    broadcastState();
 });
+
+// Broadcast state to Toolbar
+function broadcastState() {
+    window.electronAPI.sendRecordingState({
+        isRecording: state.isRecording,
+        canDownload: !!state.recordedUrl,
+        overlayShape: state.overlayShape,
+        inactivityTimeout: inactivityTimeoutInput ? parseInt(inactivityTimeoutInput.value) : 3
+    });
+}
 
 // Enumerate available media devices
 async function enumerateDevices() {
@@ -482,9 +557,17 @@ async function startRecording() {
         state.recordedBlob = null;
         state.recordedUrl = null;
 
-        // Start recording the canvas
-        await window.electronAPI.startRecordingStream();
-        await startMediaRecorder();
+        // Start NATIVE recording
+        let micLabel = null;
+        if (micSelect.value) {
+            micLabel = micSelect.options[micSelect.selectedIndex].text;
+        }
+        console.log('[Renderer] Starting native recording with mic:', micLabel);
+
+        await window.electronAPI.startNativeRecording(micLabel);
+
+        // Native produces H.264 MP4, so we set this to ensure fast copy during "download"
+        state.recordingMimeType = 'video/mp4;codecs=h264';
 
         // Update UI
         state.isRecording = true;
@@ -493,8 +576,11 @@ async function startRecording() {
         startBtn.disabled = true;
         stopBtn.disabled = false;
         downloadBtn.disabled = true;
-        updateStatus('Recording...');
+        updateStatus('Recording (Native Engine)...');
         document.querySelector('.status-dot').classList.add('recording');
+
+        // Broadcast state to toolbar
+        broadcastState();
 
         // Start global input monitoring
         await window.electronAPI.startInputMonitoring();
@@ -777,9 +863,17 @@ async function stopRecording() {
     await window.electronAPI.stopInputMonitoring();
     console.log('[Renderer] Stopped global input monitoring');
 
-    // Stop media recorder
-    if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
-        state.mediaRecorder.stop();
+    // Stop NATIVE recording
+    updateStatus('Stopping native recording...');
+    try {
+        const filePath = await window.electronAPI.stopNativeRecording();
+        state.recordedUrl = filePath;
+
+        updateStatus('Recording saved! Click Download to save/move the video.');
+        downloadBtn.disabled = false;
+    } catch (error) {
+        console.error('Error stopping native recording:', error);
+        updateStatus('Error saving: ' + error.message);
     }
 
     // Stop timer
@@ -788,10 +882,12 @@ async function stopRecording() {
     // Cleanup
     cleanup();
 
-    // Update UI
     startBtn.disabled = false;
     stopBtn.disabled = true;
     document.querySelector('.status-dot').classList.remove('recording');
+
+    // Broadcast state
+    broadcastState();
 }
 
 // Download video
@@ -838,19 +934,31 @@ async function downloadVideo() {
 
 // User input detection
 function onUserInput(event) {
-    if (!state.isRecording) return;
-
     // Ignore input if dragging camera
     if (state.isDragging) return;
 
-    state.lastInputTime = Date.now();
-
-    // If we were in camera-only mode, switch back to screen-with-camera
+    // CRITICAL: Allow revert from camera-only mode even when NOT recording
+    // This lets Focus Mode work during preview (before hitting record)
     if (state.cameraMode === 'camera-only') {
-        console.log('[Camera] Switching to SCREEN-WITH-CAMERA mode (user input)');
+        // Debounce: Ignore input for 2 seconds after Focus Mode is activated
+        // powerMonitor.getSystemIdleTime() returns 0 for ~1 second after any input,
+        // and we poll every 200ms, so we need a longer debounce to avoid false positives
+        const timeSinceActivation = Date.now() - (state.focusModeActivatedAt || 0);
+        if (timeSinceActivation < 2000) {
+            // Silent ignore - don't spam logs
+            return;
+        }
+
+        console.log('[Camera] Switching to SCREEN-WITH-CAMERA mode (user input detected)');
         state.cameraMode = 'screen-with-camera';
+        state.focusModeActivatedAt = 0; // Reset
         window.electronAPI.setOverlayMode('mini');
     }
+
+    // Only track timing and reset inactivity timer if recording
+    if (!state.isRecording) return;
+
+    state.lastInputTime = Date.now();
 
     // Reset inactivity timer
     resetInactivityTimer();

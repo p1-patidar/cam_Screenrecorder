@@ -21,14 +21,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
         // console.log('[Preload] writeRecordingChunk called'); // Commented out to avoid spam
         return ipcRenderer.invoke('write-recording-chunk', buffer);
     },
-    stopRecordingStream: () => {
-        console.log('[Preload] stopRecordingStream called');
-        return ipcRenderer.invoke('stop-recording-stream');
-    },
-    convertToMP4: (webmPath, mp4Path) => {
-        console.log('[Preload] convertToMP4 called');
-        return ipcRenderer.invoke('convert-to-mp4', webmPath, mp4Path);
-    },
+    stopRecordingStream: () => ipcRenderer.invoke('stop-recording-stream'),
+    convertToMP4: (webmPath, mp4Filename, mimeType) => ipcRenderer.invoke('convert-to-mp4', webmPath, mp4Filename, mimeType),
+
+    // Native Recording API
+    startNativeRecording: (micLabel) => ipcRenderer.invoke('start-native-recording', micLabel),
+    stopNativeRecording: () => ipcRenderer.invoke('stop-native-recording'),
+
+    // Toolbar Control Routing
+    onControlAction: (callback) => ipcRenderer.on('control-action', (event, action) => callback(action)),
+    sendRecordingState: (state) => ipcRenderer.send('recording-state-update', state),
+
     startInputMonitoring: () => {
         return ipcRenderer.invoke('start-input-monitoring');
     },
